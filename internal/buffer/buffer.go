@@ -30,7 +30,7 @@ func NewBuffer(path string) *Buffer {
 		fmt.Println("Error reading file")
 		return nil
 	}
-	return &Buffer{
+	tmpBuffer := &Buffer{
 		Path:    path,
 		Content: bytes.Split(dat, []byte("\n")),
 		Cursor: Cursor{
@@ -39,6 +39,22 @@ func NewBuffer(path string) *Buffer {
 			Type: NormalCursor,
 		},
 	}
+	tmpBuffer.ConvertTabsToSpaces()
+	return tmpBuffer
+}
+
+func (b *Buffer) ConvertTabsToSpaces() {
+	for i := range b.Content {
+		b.Content[i] = bytes.ReplaceAll(b.Content[i], []byte{9}, []byte{32, 32, 32, 32})
+	}
+
+}
+
+func (b *Buffer) ConvertSpacesToTabs() {
+	for i := range b.Content {
+		b.Content[i] = bytes.ReplaceAll(b.Content[i], []byte{32, 32, 32, 32}, []byte{9})
+	}
+
 }
 
 func (b *Buffer) InsertChar(c byte) {
@@ -84,23 +100,21 @@ func (b *Buffer) PrintBuffer() {
 	terminal.ClearScreen()
 
 	for i, line := range b.Content {
-		if i == b.Cursor.Row {
-			for j, c := range line {
-				if j == b.Cursor.Col {
-					terminal.CursorColor()
-					if b.Cursor.Type == InsertCursor {
-						terminal.CursorBlinking()
-					}
-					fmt.Print(string(c))
-					terminal.ResetScreenAttributes()
-					continue
-				}
-				fmt.Print(string(c))
+		for j, c := range line {
+			if i == b.Cursor.Row && j == b.Cursor.Col {
+				terminal.CursorColor()
 			}
-			continue
-
+			fmt.Printf("%c", c)
+			terminal.ResetScreenAttributes()
 		}
-
-		fmt.Println(string(line))
+		if len(line) == 0 {
+			if i == b.Cursor.Row {
+				terminal.CursorColor()
+			}
+			fmt.Printf("%c", 32)
+			terminal.ResetScreenAttributes()
+		}
+		fmt.Printf("\r\n")
 	}
+	fmt.Println("Cursor Row: ", b.Cursor.Row, "Cursor Col: ", b.Cursor.Col)
 }

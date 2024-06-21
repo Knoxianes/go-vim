@@ -1,17 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"os"
 	"os/exec"
 
 	"github.com/Knoxianes/go-vim/internal/buffer"
+	"github.com/Knoxianes/go-vim/pkg/terminal"
 )
 
 func main() {
-	// disable input buffering
-	exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
-	// do not display entered characters on the screen
-	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+
+	initApp()
+
+	defer cleanUp()
 
 	args := os.Args
 	if len(args) != 2 {
@@ -33,5 +35,39 @@ func main() {
 
 	currBuffer.PrintBuffer()
 	for {
+		reader := bufio.NewReader(os.Stdin)
+		char, err := reader.ReadByte()
+		if err != nil {
+			panic("Error reading byte")
+		}
+		switch char {
+		case 'q':
+			return
+		case 'j':
+			currBuffer.MoveCursorDown()
+		case 'k':
+			currBuffer.MoveCursorUp()
+		case 'h':
+			currBuffer.MoveCursorLeft()
+		case 'l':
+			currBuffer.MoveCursorRight()
+		}
+		currBuffer.PrintBuffer()
+
 	}
+}
+
+func initApp() {
+
+	// do not display entered characters on the screen
+	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+	exec.Command("stty", "-F", "/dev/tty", "raw").Run()
+	terminal.HideCursor()
+}
+
+func cleanUp() {
+	// do not display entered characters on the screen
+	exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+	exec.Command("stty", "-F", "/dev/tty", "-raw").Run()
+	terminal.ShowCursor()
 }

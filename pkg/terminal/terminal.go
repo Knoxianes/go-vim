@@ -33,3 +33,10 @@ func CursorBlinking() {
 func ResetScreenAttributes() {
 	fmt.Print("\033[0m")
 }
+
+func HideCursor() {
+	fmt.Print("\033[?25l")
+}
+func ShowCursor() {
+	fmt.Print("\033[?25h")
+}
