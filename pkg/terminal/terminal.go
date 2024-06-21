@@ -24,7 +24,7 @@ func BackGroundHighlight() {
 }
 
 func CursorColor() {
-	fmt.Print("\033[48;5;255m\033[38;5;0m")
+	fmt.Print("\033[7m")
 }
 func CursorBlinking() {
 	fmt.Print("\033[5m")

@@ -59,7 +59,9 @@ func (b *Buffer) ConvertSpacesToTabs() {
 
 func (b *Buffer) InsertChar(c byte) {
 	b.Content[b.Cursor.Row] = slices.Insert(b.Content[b.Cursor.Row], b.Cursor.Col, c)
-	b.Cursor.Col++
+	if b.Cursor.Col < len(b.Content[b.Cursor.Row]) {
+		b.Cursor.Col++
+	}
 }
 
 func (b *Buffer) InsertNewline() {
@@ -67,22 +69,54 @@ func (b *Buffer) InsertNewline() {
 }
 
 func (b *Buffer) DeleteChar() {
-	b.Content[b.Cursor.Row] = slices.Delete(b.Content[b.Cursor.Row], b.Cursor.Col, b.Cursor.Col+1)
+	if b.Cursor.Col == 0 {
+		if b.Cursor.Row == 0 {
+			return
+		}
+		b.Cursor.Col = len(b.Content[b.Cursor.Row-1])
+		if b.Cursor.Col < 0 {
+			b.Cursor.Col = 0
+		}
+		b.Content[b.Cursor.Row-1] = append(b.Content[b.Cursor.Row-1], b.Content[b.Cursor.Row]...)
+		b.DeleteLine()
+		return
+	}
+	b.Content[b.Cursor.Row] = slices.Delete(b.Content[b.Cursor.Row], b.Cursor.Col-1, b.Cursor.Col)
+	b.Cursor.Col--
 }
 
 func (b *Buffer) DeleteLine() {
+	if len(b.Content) == 1 {
+		b.Content[0] = []byte{}
+		return
+	}
 	b.Content = slices.Delete(b.Content, b.Cursor.Row, b.Cursor.Row+1)
+	b.Cursor.Row--
 }
 
 func (b *Buffer) MoveCursorUp() {
 	if b.Cursor.Row > 0 {
 		b.Cursor.Row--
 	}
+	if b.Cursor.Col > len(b.Content[b.Cursor.Row])-1 {
+		b.Cursor.Col = len(b.Content[b.Cursor.Row]) - 1
+	}
+	if len(b.Content[b.Cursor.Row]) == 0 {
+		b.Cursor.Col = 0
+	}
 }
 func (b *Buffer) MoveCursorDown() {
+
 	if b.Cursor.Row < len(b.Content)-1 {
 		b.Cursor.Row++
 	}
+	if b.Cursor.Col > len(b.Content[b.Cursor.Row])-1 {
+		b.Cursor.Col = len(b.Content[b.Cursor.Row]) - 1
+	}
+	if len(b.Content[b.Cursor.Row]) == 0 {
+		b.Cursor.Col = 0
+	}
+
 }
 func (b *Buffer) MoveCursorLeft() {
 	if b.Cursor.Col > 0 {
@@ -90,7 +124,7 @@ func (b *Buffer) MoveCursorLeft() {
 	}
 }
 func (b *Buffer) MoveCursorRight() {
-	if b.Cursor.Col < len(b.Content[b.Cursor.Row])-1 {
+	if b.Cursor.Col < len(b.Content[b.Cursor.Row]) {
 		b.Cursor.Col++
 	}
 }
@@ -103,13 +137,27 @@ func (b *Buffer) PrintBuffer() {
 		for j, c := range line {
 			if i == b.Cursor.Row && j == b.Cursor.Col {
 				terminal.CursorColor()
+				if b.Cursor.Type == InsertCursor {
+					terminal.CursorBlinking()
+				}
 			}
 			fmt.Printf("%c", c)
+			terminal.ResetScreenAttributes()
+		}
+		if b.Cursor.Col == len(line) && i == b.Cursor.Row && len(line) > 0 {
+			terminal.CursorColor()
+			if b.Cursor.Type == InsertCursor {
+				terminal.CursorBlinking()
+			}
+			fmt.Printf("%c", 32)
 			terminal.ResetScreenAttributes()
 		}
 		if len(line) == 0 {
 			if i == b.Cursor.Row {
 				terminal.CursorColor()
+				if b.Cursor.Type == InsertCursor {
+					terminal.CursorBlinking()
+				}
 			}
 			fmt.Printf("%c", 32)
 			terminal.ResetScreenAttributes()
