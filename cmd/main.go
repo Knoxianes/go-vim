@@ -40,7 +40,7 @@ func main() {
 		if err != nil {
 			panic("Error reading byte")
 		}
-		if currBuffer.Cursor.Type == buffer.NormalCursor {
+		if currBuffer.GetMode() == buffer.NormalMode {
 			switch char {
 			case 'q':
 				return
@@ -53,18 +53,16 @@ func main() {
 			case 'l':
 				currBuffer.MoveCursorRight()
 			case 'i':
-				currBuffer.Cursor.Type = buffer.InsertCursor
+				currBuffer.SetInsertMode()
 			case 's':
 				currBuffer.SaveBuffer()
-			case 27:
-				currBuffer.Cursor.Type = buffer.NormalCursor
 			}
 		} else {
 			if char > 31 && char < 127 {
 				currBuffer.InsertChar(char)
 			}
 			if char == 27 {
-				currBuffer.Cursor.Type = buffer.NormalCursor
+				currBuffer.SetNormalMode()
 			}
 			if char == 127 {
 				currBuffer.DeleteChar()

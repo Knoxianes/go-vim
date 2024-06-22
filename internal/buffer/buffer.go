@@ -9,19 +9,20 @@ import (
 	"github.com/Knoxianes/go-vim/pkg/terminal"
 )
 
-const NormalCursor = 0
-const InsertCursor = 1
+const NormalMode = 0
+const InsertMode = 1
+const VisualMode = 2
 
 type Buffer struct {
-	Path    string
-	Content [][]byte
-	Cursor  Cursor
+	path    string
+	content [][]byte
+	cursor  cursor
+	mode    int
 }
 
-type Cursor struct {
-	Row  int
-	Col  int
-	Type int
+type cursor struct {
+	Row int
+	Col int
 }
 
 func NewBuffer(path string) *Buffer {
@@ -31,12 +32,12 @@ func NewBuffer(path string) *Buffer {
 		return nil
 	}
 	tmpBuffer := &Buffer{
-		Path:    path,
-		Content: bytes.Split(dat, []byte("\n")),
-		Cursor: Cursor{
-			Row:  0,
-			Col:  0,
-			Type: NormalCursor,
+		path:    path,
+		content: bytes.Split(dat, []byte("\n")),
+		mode:    NormalMode,
+		cursor: cursor{
+			Row: 0,
+			Col: 0,
 		},
 	}
 	tmpBuffer.ConvertTabsToSpaces()
@@ -44,99 +45,99 @@ func NewBuffer(path string) *Buffer {
 }
 
 func (b *Buffer) ConvertTabsToSpaces() {
-	for i := range b.Content {
-		b.Content[i] = bytes.ReplaceAll(b.Content[i], []byte{9}, []byte{32, 32, 32, 32})
+	for i := range b.content {
+		b.content[i] = bytes.ReplaceAll(b.content[i], []byte{9}, []byte{32, 32, 32, 32})
 	}
 
 }
 
 func (b *Buffer) ConvertSpacesToTabs() {
-	for i := range b.Content {
-		b.Content[i] = bytes.ReplaceAll(b.Content[i], []byte{32, 32, 32, 32}, []byte{9})
+	for i := range b.content {
+		b.content[i] = bytes.ReplaceAll(b.content[i], []byte{32, 32, 32, 32}, []byte{9})
 	}
 
 }
 
 func (b *Buffer) InsertChar(c byte) {
-	b.Content[b.Cursor.Row] = slices.Insert(b.Content[b.Cursor.Row], b.Cursor.Col, c)
-	if b.Cursor.Col < len(b.Content[b.Cursor.Row]) {
-		b.Cursor.Col++
+	b.content[b.cursor.Row] = slices.Insert(b.content[b.cursor.Row], b.cursor.Col, c)
+	if b.cursor.Col < len(b.content[b.cursor.Row]) {
+		b.cursor.Col++
 	}
 }
 
 func (b *Buffer) InsertNewline() {
-	b.Content = slices.Insert(b.Content, b.Cursor.Row+1, []byte{10})
+	b.content = slices.Insert(b.content, b.cursor.Row+1, []byte{10})
 }
 
 func (b *Buffer) BreakLine() {
-	b.Content = slices.Insert(b.Content, b.Cursor.Row+1, b.Content[b.Cursor.Row][b.Cursor.Col:])
-	b.Content[b.Cursor.Row] = b.Content[b.Cursor.Row][:b.Cursor.Col]
-	b.Cursor.Row++
-	b.Cursor.Col = 0
+	b.content = slices.Insert(b.content, b.cursor.Row+1, b.content[b.cursor.Row][b.cursor.Col:])
+	b.content[b.cursor.Row] = b.content[b.cursor.Row][:b.cursor.Col]
+	b.cursor.Row++
+	b.cursor.Col = 0
 }
 
 func (b *Buffer) DeleteChar() {
-	if b.Cursor.Col == 0 {
-		if b.Cursor.Row == 0 {
+	if b.cursor.Col == 0 {
+		if b.cursor.Row == 0 {
 			return
 		}
-		b.Cursor.Col = len(b.Content[b.Cursor.Row-1])
-		if b.Cursor.Col < 0 {
-			b.Cursor.Col = 0
+		b.cursor.Col = len(b.content[b.cursor.Row-1])
+		if b.cursor.Col < 0 {
+			b.cursor.Col = 0
 		}
-		b.Content[b.Cursor.Row-1] = append(b.Content[b.Cursor.Row-1], b.Content[b.Cursor.Row]...)
+		b.content[b.cursor.Row-1] = append(b.content[b.cursor.Row-1], b.content[b.cursor.Row]...)
 		b.DeleteLine()
 		return
 	}
-	b.Content[b.Cursor.Row] = slices.Delete(b.Content[b.Cursor.Row], b.Cursor.Col-1, b.Cursor.Col)
-	b.Cursor.Col--
+	b.content[b.cursor.Row] = slices.Delete(b.content[b.cursor.Row], b.cursor.Col-1, b.cursor.Col)
+	b.cursor.Col--
 }
 
 func (b *Buffer) DeleteLine() {
-	if len(b.Content) == 1 {
-		b.Content[0] = []byte{}
+	if len(b.content) == 1 {
+		b.content[0] = []byte{}
 		return
 	}
-	b.Content = slices.Delete(b.Content, b.Cursor.Row, b.Cursor.Row+1)
-	b.Cursor.Row--
+	b.content = slices.Delete(b.content, b.cursor.Row, b.cursor.Row+1)
+	b.cursor.Row--
 }
 
 func (b *Buffer) MoveCursorUp() {
-	if b.Cursor.Row > 0 {
-		b.Cursor.Row--
+	if b.cursor.Row > 0 {
+		b.cursor.Row--
 	}
-	if b.Cursor.Col > len(b.Content[b.Cursor.Row]) {
-		b.Cursor.Col = len(b.Content[b.Cursor.Row])
+	if b.cursor.Col > len(b.content[b.cursor.Row]) {
+		b.cursor.Col = len(b.content[b.cursor.Row])
 	}
-	if len(b.Content[b.Cursor.Row]) == 0 {
-		b.Cursor.Col = 0
+	if len(b.content[b.cursor.Row]) == 0 {
+		b.cursor.Col = 0
 	}
 }
 func (b *Buffer) MoveCursorDown() {
 
-	if b.Cursor.Row < len(b.Content)-1 {
-		b.Cursor.Row++
+	if b.cursor.Row < len(b.content)-1 {
+		b.cursor.Row++
 	}
-	if b.Cursor.Col > len(b.Content[b.Cursor.Row]) {
-		b.Cursor.Col = len(b.Content[b.Cursor.Row])
+	if b.cursor.Col > len(b.content[b.cursor.Row]) {
+		b.cursor.Col = len(b.content[b.cursor.Row])
 	}
-	if len(b.Content[b.Cursor.Row]) == 0 {
-		b.Cursor.Col = 0
+	if len(b.content[b.cursor.Row]) == 0 {
+		b.cursor.Col = 0
 	}
 
 }
 func (b *Buffer) MoveCursorLeft() {
-	if b.Cursor.Col > 0 {
-		b.Cursor.Col--
+	if b.cursor.Col > 0 {
+		b.cursor.Col--
 	}
 }
 func (b *Buffer) MoveCursorRight() {
-	if b.Cursor.Col < len(b.Content[b.Cursor.Row]) {
-		b.Cursor.Col++
+	if b.cursor.Col < len(b.content[b.cursor.Row]) {
+		b.cursor.Col++
 	}
 }
 func (b *Buffer) SaveBuffer() {
-	file, err := os.Create(b.Path)
+	file, err := os.Create(b.path)
 	if err != nil {
 		fmt.Println("Error saving file")
 		return
@@ -145,7 +146,7 @@ func (b *Buffer) SaveBuffer() {
 	defer file.Close()
 
 	b.ConvertSpacesToTabs()
-	for _, line := range b.Content {
+	for _, line := range b.content {
 		file.Write(append(line, 10))
 	}
 	b.ConvertTabsToSpaces()
@@ -154,29 +155,29 @@ func (b *Buffer) SaveBuffer() {
 func (b *Buffer) PrintBuffer() {
 	terminal.ClearScreen()
 
-	for i, line := range b.Content {
+	for i, line := range b.content {
 		for j, c := range line {
-			if i == b.Cursor.Row && j == b.Cursor.Col {
+			if i == b.cursor.Row && j == b.cursor.Col {
 				terminal.CursorColor()
-				if b.Cursor.Type == InsertCursor {
+				if b.mode == InsertMode {
 					terminal.CursorBlinking()
 				}
 			}
 			fmt.Printf("%c", c)
 			terminal.ResetScreenAttributes()
 		}
-		if b.Cursor.Col == len(line) && i == b.Cursor.Row && len(line) > 0 {
+		if b.cursor.Col == len(line) && i == b.cursor.Row && len(line) > 0 {
 			terminal.CursorColor()
-			if b.Cursor.Type == InsertCursor {
+			if b.mode == InsertMode {
 				terminal.CursorBlinking()
 			}
 			fmt.Printf("%c", 32)
 			terminal.ResetScreenAttributes()
 		}
 		if len(line) == 0 {
-			if i == b.Cursor.Row {
+			if i == b.cursor.Row {
 				terminal.CursorColor()
-				if b.Cursor.Type == InsertCursor {
+				if b.mode == InsertMode {
 					terminal.CursorBlinking()
 				}
 			}
@@ -185,5 +186,18 @@ func (b *Buffer) PrintBuffer() {
 		}
 		fmt.Printf("\r\n")
 	}
-	fmt.Println("Cursor Row: ", b.Cursor.Row, "Cursor Col: ", b.Cursor.Col)
+	fmt.Println("cursor Row: ", b.cursor.Row, "cursor Col: ", b.cursor.Col)
+}
+
+func (b *Buffer) SetVisualMode() {
+	b.mode = VisualMode
+}
+func (b *Buffer) SetInsertMode() {
+	b.mode = InsertMode
+}
+func (b *Buffer) SetNormalMode() {
+	b.mode = NormalMode
+}
+func (b *Buffer) GetMode() int {
+	return b.mode
 }
