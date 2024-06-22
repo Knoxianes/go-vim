@@ -21,7 +21,12 @@ func TestBufferInsertNewline(t *testing.T) {
 func TestBufferDeleteChar(t *testing.T) {
 	b := NewBuffer("testing_data")
 	b.DeleteChar()
-	if b.Content[0][0] == 'o' {
+	if b.Content[0][0] != 'o' {
+		t.Errorf("DeleteChar failed")
+	}
+	b.MoveCursorRight()
+	b.DeleteChar()
+	if b.Content[0][0] == 't' {
 		t.Errorf("DeleteChar failed")
 	}
 }
@@ -73,7 +78,7 @@ func TestBufferCursorRight(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		b.MoveCursorRight()
 	}
-	if b.Cursor.Col != len(b.Content[0])-1 || b.Cursor.Row != 0 {
+	if b.Cursor.Col != len(b.Content[0]) || b.Cursor.Row != 0 {
 		t.Errorf("CursorRight failed")
 	}
 }

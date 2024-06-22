@@ -54,6 +54,8 @@ func main() {
 				currBuffer.MoveCursorRight()
 			case 'i':
 				currBuffer.Cursor.Type = buffer.InsertCursor
+			case 's':
+				currBuffer.SaveBuffer()
 			case 27:
 				currBuffer.Cursor.Type = buffer.NormalCursor
 			}
@@ -68,6 +70,7 @@ func main() {
 				currBuffer.DeleteChar()
 			}
 			if char == 13 {
+				currBuffer.BreakLine()
 			}
 		}
 

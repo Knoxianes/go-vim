@@ -68,6 +68,13 @@ func (b *Buffer) InsertNewline() {
 	b.Content = slices.Insert(b.Content, b.Cursor.Row+1, []byte{10})
 }
 
+func (b *Buffer) BreakLine() {
+	b.Content = slices.Insert(b.Content, b.Cursor.Row+1, b.Content[b.Cursor.Row][b.Cursor.Col:])
+	b.Content[b.Cursor.Row] = b.Content[b.Cursor.Row][:b.Cursor.Col]
+	b.Cursor.Row++
+	b.Cursor.Col = 0
+}
+
 func (b *Buffer) DeleteChar() {
 	if b.Cursor.Col == 0 {
 		if b.Cursor.Row == 0 {
@@ -98,8 +105,8 @@ func (b *Buffer) MoveCursorUp() {
 	if b.Cursor.Row > 0 {
 		b.Cursor.Row--
 	}
-	if b.Cursor.Col > len(b.Content[b.Cursor.Row])-1 {
-		b.Cursor.Col = len(b.Content[b.Cursor.Row]) - 1
+	if b.Cursor.Col > len(b.Content[b.Cursor.Row]) {
+		b.Cursor.Col = len(b.Content[b.Cursor.Row])
 	}
 	if len(b.Content[b.Cursor.Row]) == 0 {
 		b.Cursor.Col = 0
@@ -110,8 +117,8 @@ func (b *Buffer) MoveCursorDown() {
 	if b.Cursor.Row < len(b.Content)-1 {
 		b.Cursor.Row++
 	}
-	if b.Cursor.Col > len(b.Content[b.Cursor.Row])-1 {
-		b.Cursor.Col = len(b.Content[b.Cursor.Row]) - 1
+	if b.Cursor.Col > len(b.Content[b.Cursor.Row]) {
+		b.Cursor.Col = len(b.Content[b.Cursor.Row])
 	}
 	if len(b.Content[b.Cursor.Row]) == 0 {
 		b.Cursor.Col = 0
@@ -129,6 +136,20 @@ func (b *Buffer) MoveCursorRight() {
 	}
 }
 func (b *Buffer) SaveBuffer() {
+	file, err := os.Create(b.Path)
+	if err != nil {
+		fmt.Println("Error saving file")
+		return
+	}
+
+	defer file.Close()
+
+	b.ConvertSpacesToTabs()
+	for _, line := range b.Content {
+		file.Write(append(line, 10))
+	}
+	b.ConvertTabsToSpaces()
+
 }
 func (b *Buffer) PrintBuffer() {
 	terminal.ClearScreen()
