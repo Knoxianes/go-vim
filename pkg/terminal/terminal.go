@@ -3,15 +3,24 @@ package terminal
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"golang.org/x/term"
 )
 
+var TerminalSize Size
+
+type Size struct {
+	Col int
+	Row int
+}
+
 func GetTerminalSize() (int, int, error) {
-	if !term.IsTerminal(0) {
+	terminalNum := int(os.Stdout.Fd())
+	if !term.IsTerminal(terminalNum) {
 		return 0, 0, errors.New("Not a terminal")
 	}
-	return term.GetSize(0)
+	return term.GetSize(terminalNum)
 }
 
 func ClearScreen() {
